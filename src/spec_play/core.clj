@@ -1,5 +1,6 @@
 (ns spec-play.core
   (:require [clojure.spec :as s]
+            [clojure.spec.gen]
             [clojure.test.check.generators :as gen]))
 
 (s/def ::even? (s/and integer? even?))
@@ -156,51 +157,56 @@
 ;; Tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(s/conform ::parse-is-p '(is e N))
+(defmacro assert-valid [& body]
+  `(assert (s/valid? ~@body)
+           (with-out-str
+             (s/explain ~@body))))
 
-(s/conform ::parse-not-p '(not (is e N)))
+(assert-valid ::parse-is-p '(is e N))
 
-(s/conform ::parse-false-e false)
-(s/conform ::parse-e false)
-(s/conform ::parse-var-e 'blah)
-(s/conform ::parse-e 'blah)
-(s/conform ::parse-if-e '(if blah blah blah))
-(s/conform ::parse-e '(if blah blah blah))
-(s/conform ::parse-lambda-e '(lambda (x :- N) blah))
-(s/conform ::parse-e '(lambda (x :- N) blah))
-(s/conform ::parse-add1-e 'add1)
-(s/conform ::parse-e 'add1)
-(s/conform ::parse-e '(add1 blah))
+(assert-valid ::parse-not-p '(not (is e N)))
 
-(s/conform ::parse-n?-e 'n?)
-(s/conform ::parse-e '(n? blah))
+(assert-valid ::parse-false-e false)
+(assert-valid ::parse-e false)
+(assert-valid ::parse-var-e 'blah)
+(assert-valid ::parse-e 'blah)
+(assert-valid ::parse-if-e '(if blah blah blah))
+(assert-valid ::parse-e '(if blah blah blah))
+(assert-valid ::parse-lambda-e '(lambda (x :- N) blah))
+(assert-valid ::parse-e '(lambda (x :- N) blah))
+(assert-valid ::parse-add1-e 'add1)
+(assert-valid ::parse-e 'add1)
+(assert-valid ::parse-e '(add1 blah))
 
-(s/conform ::parse-app-e '((lambda (x :- t) blah) blah))
-(s/conform ::parse-e '((lambda (x :- t) blah) blah))
+(assert-valid ::parse-n?-e 'n?)
+(assert-valid ::parse-e '(n? blah))
 
-(s/conform ::parse-p '(not (is e t)))
+(assert-valid ::parse-app-e '((lambda (x :- N) blah) blah))
+(assert-valid ::parse-e '((lambda (x :- N) blah) blah))
 
-(s/conform ::parse-p '(or (not (is e t)) (is e t)))
-(s/conform ::parse-p '(and
-                        (or (not (is e t)) (is e t))))
+(assert-valid ::parse-p '(not (is e N)))
 
-(s/conform ::parse-any-t 'Any)
-(s/conform ::parse-t 'Any)
-(s/conform ::parse-false-t false)
-(s/conform ::parse-t false)
-(s/conform ::parse-num-t 'N)
-(s/conform ::parse-t 'N)
-(s/conform ::parse-fn-t '[x :- N -> N])
-(s/conform ::parse-t '[x :- N -> N])
-(s/conform ::parse-not-t '(not [x :- N -> N]))
-(s/conform ::parse-t '(not [x :- N -> N]))
+(assert-valid ::parse-p '(or (not (is e N)) (is e N)))
+(assert-valid ::parse-p '(and
+                           (or (not (is e N)) (is e N))))
 
-(s/conform ::parse-or-t '(or (not [x :- N -> N])))
-(s/conform ::parse-t '(or (not [x :- N -> N])))
-(s/conform ::parse-and-t '(and (or (not [x :- N -> N]))))
-(s/conform ::parse-t '(and (or (not [x :- N -> N]))))
+(assert-valid ::parse-any-t 'Any)
+(assert-valid ::parse-t 'Any)
+(assert-valid ::parse-false-t false)
+(assert-valid ::parse-t false)
+(assert-valid ::parse-num-t 'N)
+(assert-valid ::parse-t 'N)
+(assert-valid ::parse-fn-t '[x :- N -> N])
+(assert-valid ::parse-t '[x :- N -> N])
+(assert-valid ::parse-not-t '(not [x :- N -> N]))
+(assert-valid ::parse-t '(not [x :- N -> N]))
 
-(s/conform ::parse-t '(and (or (not [x :- N -> N]))))
+(assert-valid ::parse-or-t '(or (not [x :- N -> N])))
+(assert-valid ::parse-t '(or (not [x :- N -> N])))
+(assert-valid ::parse-and-t '(and (or (not [x :- N -> N]))))
+(assert-valid ::parse-t '(and (or (not [x :- N -> N]))))
+
+(assert-valid ::parse-t '(and (or (not [x :- N -> N]))))
 
 (defn parse-e [e] (s/conform ::parse-e e))
 (defn parse-p [e] (s/conform ::parse-p e))
@@ -268,4 +274,20 @@
 (unparse-e (parse-e '(blah blah)))
 
 ;; ???
-; (gen/sample (s/gen ::parse-t) 4)
+(defonce e-gen (delay (s/gen ::parse-e)))
+;(gen/sample @e-gen 1)
+;(gen/sample (s/gen ::parse-is-p) 4)
+
+;(s/registry)
+
+(def my-symbol symbol)
+
+(s/fdef my-symbol
+  :args (s/alt :separate (s/cat :ns string? :n string?)
+               :str string?
+               :sym symbol?)
+  :ret symbol?)
+
+(s/instrument-all)
+
+;(my-symbol 1)
