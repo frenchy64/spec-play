@@ -31,28 +31,28 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 ; (is e t)
-(s/def ::parse-is-p (s/cat :is #{'is}
-                           :exp ::parse-e
-                           :type ::parse-t))
+(s/def ::parse-is-p (s/cat ::is #{'is}
+                           ::exp ::parse-e
+                           ::type ::parse-t))
 
 ; (not p)
-(s/def ::parse-not-p (s/cat :not #{'not}
-                            :prop ::parse-p))
+(s/def ::parse-not-p (s/cat ::not #{'not}
+                            ::prop ::parse-p))
 
 ; (or p*)
-(s/def ::parse-or-p (s/cat :or #{'or}
-                           :props (s/* ::parse-p)))
+(s/def ::parse-or-p (s/cat ::or #{'or}
+                           ::props (s/* ::parse-p)))
 
 ; (and p*)
-(s/def ::parse-and-p (s/cat :and #{'and}
-                            :props (s/* ::parse-p)))
+(s/def ::parse-and-p (s/cat ::and #{'and}
+                            ::props (s/* ::parse-p)))
 
 ;;  p  ::= (is e t) | (not p) | (or p p) | (and p p) | (= e e)
 (s/def ::parse-p
-  (s/or :is  ::parse-is-p
-        :not ::parse-not-p
-        :or  ::parse-or-p
-        :and ::parse-and-p))
+  (s/or ::is  ::parse-is-p
+        ::not ::parse-not-p
+        ::or  ::parse-or-p
+        ::and ::parse-and-p))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Parse Expressions
@@ -69,21 +69,21 @@
 
 ; (if e e e)
 (s/def ::parse-if-e (s/cat :if #{'if}
-                           :test ::parse-e
-                           :then ::parse-e
-                           :else ::parse-e))
+                           ::test ::parse-e
+                           ::then ::parse-e
+                           ::else ::parse-e))
 
 ; (lambda (x :- t) e)
 (s/def ::parse-lambda-e (s/cat :lambda #{'lambda}
-                               :binder (s/spec
-                                         (s/cat :name ::sym
-                                                :turnstile #{:-}
-                                                :type ::parse-t))
-                               :body ::parse-e))
+                               ::binder (s/spec
+                                          (s/cat ::name ::sym
+                                                 ::turnstile #{:-}
+                                                 ::type ::parse-t))
+                               ::body ::parse-e))
 
 ; (e e*)
-(s/def ::parse-app-e (s/cat :fn ::parse-e
-                            :args (s/* ::parse-e)))
+(s/def ::parse-app-e (s/cat ::fn ::parse-e
+                            ::args (s/* ::parse-e)))
 
 ; add1
 (s/def ::parse-add1-e #{'add1})
@@ -94,14 +94,14 @@
 ;;  e  ::= x | (if e e e) | (lambda (x :- t) e) | (e e*) | #f | n? | add1
 (s/def ::parse-e
   (s/or ;; add1/n? are special variables
-        :add1   ::parse-add1-e
-        :n?     ::parse-n?-e
-        :var    ::parse-var-e
-        :if     ::parse-if-e
-        :lambda ::parse-lambda-e
-        :false  ::parse-false-e
+        ::add1   ::parse-add1-e
+        ::n?     ::parse-n?-e
+        ::var    ::parse-var-e
+        ::if     ::parse-if-e
+        ::lambda ::parse-lambda-e
+        ::false  ::parse-false-e
         ;; app is a catch-all for lists
-        :app    ::parse-app-e))
+        ::app    ::parse-app-e))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Parse Types
@@ -112,29 +112,29 @@
 ; [x :- t -> t]
 (s/def ::parse-fn-t 
   (s/and ::vec
-         (s/cat :name ::sym
-                :turnstile #{:-}
-                :dom ::parse-t
-                :arrow #{'->}
-                :rng ::parse-t)))
+         (s/cat ::name ::sym
+                ::turnstile #{:-}
+                ::dom ::parse-t
+                ::arrow #{'->}
+                ::rng ::parse-t)))
 
 ; (not t)
 (s/def ::parse-not-t 
-  (s/cat :not #{'not}
-         :type ::parse-t))
+  (s/cat ::not #{'not}
+         ::type ::parse-t))
 
 ; N
 (s/def ::parse-num-t #{'N})
 
 ; (or t*)
 (s/def ::parse-or-t 
-  (s/cat :or #{'or}
-         :types (s/* ::parse-t)))
+  (s/cat ::or #{'or}
+         ::types (s/* ::parse-t)))
 
 ; (and t*)
 (s/def ::parse-and-t 
-  (s/cat :and #{'and}
-         :types (s/* ::parse-t)))
+  (s/cat ::and #{'and}
+         ::types (s/* ::parse-t)))
 
 ; false
 (s/def ::parse-false-t ::false)
@@ -144,13 +144,13 @@
 
 ;;  t  ::= [x :- t -> t] | (not t) | (or t t) | (and t t) | #f | N | Any
 (s/def ::parse-t
-  (s/or :num   ::parse-num-t
-        :false ::parse-false-t
-        :any-t ::parse-any-t
-        :fn    ::parse-fn-t
-        :not   ::parse-not-t
-        :or    ::parse-or-t
-        :and   ::parse-and-t))
+  (s/or ::num   ::parse-num-t
+        ::false ::parse-false-t
+        ::any-t ::parse-any-t
+        ::fn    ::parse-fn-t
+        ::not   ::parse-not-t
+        ::or    ::parse-or-t
+        ::and   ::parse-and-t))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -237,33 +237,33 @@
 
 (defmulti unparse-p zero-nth)
 
-(defmethod-destruct unparse-p :is
-  [{:keys [exp type]}]
+(defmethod-destruct unparse-p ::is
+  [{:keys [::exp ::type]}]
   (list 'is 
         (unparse-e exp)
         (unparse-t type)))
 
-(defmethod-destruct unparse-p :not
-  [{:keys [prop]}]
+(defmethod-destruct unparse-p ::not
+  [{:keys [::prop]}]
   (list 'not (unparse-p prop)))
 
-(defmethod-destruct unparse-p :or
-  [{:keys [props]}]
+(defmethod-destruct unparse-p ::or
+  [{:keys [::props]}]
   (list* 'or (map unparse-p props)))
 
-(defmethod-destruct unparse-p :and
-  [{:keys [props]}]
+(defmethod-destruct unparse-p ::and
+  [{:keys [::props]}]
   (list* 'and (map unparse-p props)))
 
 (defmulti unparse-t zero-nth)
 
-(defmethod-destruct unparse-t :num [name] name)
+(defmethod-destruct unparse-t ::num [name] name)
 
 (defmulti unparse-e zero-nth)
 
-(defmethod-destruct unparse-e :var [name] name)
-(defmethod-destruct unparse-e :app 
-  [{:keys [fn args]}]
+(defmethod-destruct unparse-e ::var [name] name)
+(defmethod-destruct unparse-e ::app 
+  [{:keys [::fn ::args]}]
   (list* (unparse-e fn)
          (map unparse-e args)))
 
@@ -275,8 +275,32 @@
 
 ;; ???
 (defonce e-gen (delay (s/gen ::parse-e)))
-;(gen/sample @e-gen 1)
+#_
+(gen/sample (s/gen ::parse-e) 4)
 ;(gen/sample (s/gen ::parse-is-p) 4)
+
+;(gen/sample (s/gen ::parse-var-e) 7)
+;(gen/sample (s/gen ::parse-false-e) 7)
+;(gen/sample (s/gen ::parse-if-e) 2)
+
+(s/def ::a (s/nilable (s/cat :a ::a
+                             :b ::b
+                             :c ::c)))
+(s/def ::b (s/nilable (s/cat :a ::a
+                             :b ::b
+                             :c ::c)))
+(s/def ::c (s/nilable (s/cat :a ::a
+                             :b ::b
+                             :c ::c)))
+
+#_
+(time
+  (count
+    (binding [s/*recursion-limit* 2]
+      (gen/sample (s/gen ::a) 3))))
+;"Elapsed time: 50106.721779 msecs"
+3
+;(s/gen ::b)
 
 ;(s/registry)
 
