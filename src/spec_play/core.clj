@@ -3,25 +3,6 @@
             [clojure.spec.gen]
             [clojure.test.check.generators :as gen]))
 
-(s/def ::even? (s/and integer? even?))
-(s/def ::odd? (s/and integer? odd?))
-(s/def ::a integer?)
-(s/def ::b integer?)
-(s/def ::c integer?)
-
-(def s (s/cat :forty-two #{42}
-              :odds (s/+ ::odd?)
-              :m (s/keys :req-un [::a ::b ::c])
-              :oes (s/* (s/cat :o ::odd? :e ::even?))
-              :ex (s/alt :odd ::odd? :even ::even?)))
-
-(s/conform s [42 11 13 15 {:a 1 :b 2 :c 3} 1 2 3 42 43 44 11])
-(s/conform ::odd? 3)
-
-(s/conform ::a 3)
-
-(s/describe ::a)
-
 ;;  e  ::= x | (if e e e) | (lambda (x :- t) e) | (e e*) | #f | n? | add1
 ;;  t  ::= [x : t -> t] | (not t) | (or t t) | (and t t) | #f | N | Any
 ;;  p  ::= (is e t) | (not p) | (or p p) | (and p p) | (= e e)
@@ -62,19 +43,19 @@
 (s/def ::false false?)
 
 ; var
-(s/def ::parse-var-e   ::sym)
+(s/def ::parse-var-e ::sym)
 
 ; false
 (s/def ::parse-false-e ::false)
 
 ; (if e e e)
-(s/def ::parse-if-e (s/cat :if #{'if}
+(s/def ::parse-if-e (s/cat ::if #{'if}
                            ::test ::parse-e
                            ::then ::parse-e
                            ::else ::parse-e))
 
 ; (lambda (x :- t) e)
-(s/def ::parse-lambda-e (s/cat :lambda #{'lambda}
+(s/def ::parse-lambda-e (s/cat ::lambda #{'lambda}
                                ::binder (s/spec
                                           (s/cat ::name ::sym
                                                  ::turnstile #{:-}
@@ -107,16 +88,19 @@
 ;; Parse Types
 ;;;;;;;;;;;;;;;;;;;;
 
-(s/def ::vec vector?)
-
 ; [x :- t -> t]
 (s/def ::parse-fn-t 
-  (s/and ::vec
-         (s/cat ::name ::sym
-                ::turnstile #{:-}
-                ::dom ::parse-t
-                ::arrow #{'->}
-                ::rng ::parse-t)))
+  (s/tuple
+    ;::name 
+    ::sym
+    ;::turnstile 
+    #{:-}
+    ;::dom 
+    ::parse-t
+    ;::arrow 
+    #{'->}
+    ;::rng 
+    ::parse-t))
 
 ; (not t)
 (s/def ::parse-not-t 
@@ -267,37 +251,37 @@
   (list* (unparse-e fn)
          (map unparse-e args)))
 
-(unparse-p (parse-p '(not (is e N))))
-(unparse-p (parse-p '(or (not (is e N)))))
-(unparse-p (parse-p '(and (not (is e N)))))
+;(unparse-p (parse-p '(not (is e N))))
+;(unparse-p (parse-p '(or (not (is e N)))))
+;(unparse-p (parse-p '(and (not (is e N)))))
 
-(unparse-e (parse-e '(blah blah)))
+;(unparse-e (parse-e '(blah blah)))
 
 ;; ???
-(defonce e-gen (delay (s/gen ::parse-e)))
-#_
-(gen/sample (s/gen ::parse-e) 4)
+(alter-var-root #'s/*recursion-limit* (constantly 2))
+
 ;(gen/sample (s/gen ::parse-is-p) 4)
+
+#_
+(count
+  (binding [s/*recursion-limit* 3]
+    (gen/sample (s/gen ::parse-e) 16)))
 
 ;(gen/sample (s/gen ::parse-var-e) 7)
 ;(gen/sample (s/gen ::parse-false-e) 7)
 ;(gen/sample (s/gen ::parse-if-e) 2)
+;(gen/sample (s/gen ::parse-is-p) 2)
 
-(s/def ::a (s/nilable (s/cat :a ::a
-                             :b ::b
-                             :c ::c)))
-(s/def ::b (s/nilable (s/cat :a ::a
-                             :b ::b
-                             :c ::c)))
-(s/def ::c (s/nilable (s/cat :a ::a
-                             :b ::b
-                             :c ::c)))
+(s/def :mini/vec-cat
+  (s/coll-of #_vector?
+     (s/spec (s/cat :name symbol?))
+     []))
 
 #_
 (time
   (count
-    (binding [s/*recursion-limit* 2]
-      (gen/sample (s/gen ::a) 3))))
+    (binding [s/*recursion-limit* 3]
+      (gen/sample (s/gen :mini/vec-cat) 10))))
 ;"Elapsed time: 50106.721779 msecs"
 3
 ;(s/gen ::b)
@@ -312,6 +296,22 @@
                :sym symbol?)
   :ret symbol?)
 
+;(my-symbol 1)
+
+(s/def ::op #{':if :const})
+
+(let [x {:op :const}]
+  (identical? x (s/conform (s/keys :req-op [::op]) x)))
+
+(defn adder [x] #(str %))
+
+(s/fdef adder
+  :args (s/cat :x number?)
+  :ret (s/fspec :args (s/cat :y number?)
+                :ret number?)
+  :fn #(= (-> % :args :x)
+          ((:ret %) 0)))
+
 (s/instrument-all)
 
-;(my-symbol 1)
+;(adder 1)
