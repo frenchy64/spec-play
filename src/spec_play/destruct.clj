@@ -55,7 +55,7 @@
          ::exp|parse-false false?
          ; x
          ::exp|parse-var symbol?
-         ; (if e-e e-e e)
+         ; (if e e e)
          ::exp|parse-if (s/cat ::exp|if #{'if}
                                ::if|test ~e
                                ::if|then ~e
