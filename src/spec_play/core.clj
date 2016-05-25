@@ -312,6 +312,15 @@
   :fn #(= (-> % :args :x)
           ((:ret %) 0)))
 
-(s/instrument-all)
+;(s/instrument #'adder)
 
 ;(adder 1)
+
+(comment
+
+  (let [x ::op]
+    (s/conform x 1))
+
+  (let [x ::ast|type]
+    (s/form (s/cat :foo x)))
+  )

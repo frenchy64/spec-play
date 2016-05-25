@@ -46,33 +46,53 @@
 ;;  t  ::= [x : t -> t] | (not t) | (or t t) | (and t t) | #f | N | Any
 
 ;;  e  ::= x | (if e e e) | (lambda (x :- t) e) | (e e*) | #f | n? | add1
-(defmacro parse-exp-template
+#_ ; Mock core.typed type
+(t/ann parse-exp-template
+       (All [e t]
+         [e t ->
+          (OrSpec ::exp|parse-false (Pred false)
+                  ::exp|parse-var (Pred Symbol)
+                  ::exp|parse-if (OrSpec ::exp|if '#{if}
+                                         ::if|test e
+                                         ::if|then e
+                                         ::if|else e)
+                  ::exp|parse-lambda
+                  (CatSpec ::exp|lambda '#{lambda}
+                           ::lambda|binder (Spec
+                                             (CatSpec ::lambda|binder|name (Pred Symbol)
+                                                      ::turnstile '#{:-}
+                                                      ::lambda|binder|type t))
+                           ::lambda|body e)
+                  ::exp|parse-app
+                  (CatSpec ::app|fn e
+                           ::app|args (*Spec e)))]))
+(defn parse-exp-template
   "Returns a spec for expressions, but we can vary the
   meaning of `e` and `t` in the body. This allows us to
   define specs that just match one level, or all levels."
   [e t]
-  `(s/or ; false
-         ::exp|parse-false false?
-         ; x
-         ::exp|parse-var symbol?
-         ; (if e e e)
-         ::exp|parse-if (s/cat ::exp|if #{'if}
-                               ::if|test ~e
-                               ::if|then ~e
-                               ::if|else ~e)
-         ; (lambda (x :- t) e)
-         ::exp|parse-lambda
-         (s/cat ::exp|lambda '#{~'lambda}
-                ::lambda|binder (s/spec
-                                  (s/cat ::lambda|binder|name symbol?
-                                         ::turnstile #{:-}
-                                         ::lambda|binder|type ~t))
-                ::lambda|body ~e)
+  (s/or ; false
+        ::exp|parse-false false?
+        ; x
+        ::exp|parse-var symbol?
+        ; (if e e e)
+        ::exp|parse-if (s/cat ::exp|if #{'if}
+                              ::if|test e
+                              ::if|then e
+                              ::if|else e)
+        ; (lambda (x :- t) e)
+        ::exp|parse-lambda
+        (s/cat ::exp|lambda #{'lambda}
+               ::lambda|binder (s/spec
+                                 (s/cat ::lambda|binder|name symbol?
+                                        ::turnstile #{:-}
+                                        ::lambda|binder|type t))
+               ::lambda|body e)
 
-         ; (e e*)
-         ::exp|parse-app
-         (s/cat ::app|fn ~e
-                ::app|args (s/* ~e))))
+        ; (e e*)
+        ::exp|parse-app
+        (s/cat ::app|fn e
+               ::app|args (s/* e))))
 
 ; e ::= x | (if any any any)
 ;; match one level, useful for destructuring
@@ -137,52 +157,39 @@
 
 (s/def ::ast|exp (s/multi-spec exp-type ::exp|type))
 
-(s/def ::if|test ::ast|exp)
-(s/def ::if|then ::ast|exp)
-(s/def ::if|else ::ast|exp)
-
-(s/def ::var|name symbol?)
-
-(s/def ::lambda|name symbol?)
-(s/def ::lambda|type ::ast|type)
-(s/def ::lambda|body ::ast|exp)
-
-(s/def ::app|fn ::ast|exp)
-(s/def ::app|args (s/coll-of ::ast|exp []))
-
 (s/fdef parse-exp
   :args (s/cat :s ::exp|parse)
   :ret ::ast|exp)
 
 ;;  t  ::= [x :- t -> t] | (not t) | (or t t) | (and t t) | #f | N | Any
-(defmacro parse-type-template
+(defn parse-type-template
   "Defines the spec for types, with varying `t`."
   [t]
-  `(s/or ; N
-         ::type|N     '#{~'N}
-         ; false
-         ::type|false false?
-         ; Any
-         ::type|Any   '#{~'Any}
-         ; [x :- t -> t]
-         ::type|fn    (s/tuple
-                        ;::name 
-                        symbol?
-                        ;::turnstile 
-                        #{:-}
-                        ;::dom 
-                        ~t
-                        ;::arrow 
-                        '#{~'->}
-                        ;::rng 
-                        ~t)
-         ; (not t)
-         ::type|not   (s/cat ::not #{'not}
-                             ::not|type ~t)
-         ::type|or    (s/cat ::or #{'or}
-                             ::or|types (s/* ~t))
-         ::type|and   (s/cat ::and #{'and}
-                             ::types (s/* ~t))))
+  (s/or ; N
+        ::type|N     '#{N}
+        ; false
+        ::type|false false?
+        ; Any
+        ::type|Any   '#{Any}
+        ; [x :- t -> t]
+        ::type|fn    (s/tuple
+                       ;::name 
+                       symbol?
+                       ;::turnstile 
+                       #{:-}
+                       ;::dom 
+                       t
+                       ;::arrow 
+                       '#{->}
+                       ;::rng 
+                       t)
+        ; (not t)
+        ::type|not   (s/cat ::not #{'not}
+                            ::not|type t)
+        ::type|or    (s/cat ::or #{'or}
+                            ::or|types (s/* t))
+        ::type|and   (s/cat ::and #{'and}
+                            ::types (s/* t))))
 
 ;  t  ::= [x :- any -> any] | (not any) | (or any*) | (and any*) | #f | N | Any
 ;; suitable for destructuring
@@ -237,6 +244,21 @@
                 ::fn|dom
                 ::fn|rng]))
 
+(s/def ::ast|type (s/multi-spec type-type ::type|type))
+
+(s/def ::if|test ::ast|exp)
+(s/def ::if|then ::ast|exp)
+(s/def ::if|else ::ast|exp)
+
+(s/def ::var|name symbol?)
+
+(s/def ::lambda|name symbol?)
+(s/def ::lambda|type ::ast|type)
+(s/def ::lambda|body ::ast|exp)
+
+(s/def ::app|fn ::ast|exp)
+(s/def ::app|args (s/coll-of ::ast|exp []))
+
 (s/def ::and|types (s/coll-of ::ast|type []))
 
 (s/def ::or|types (s/coll-of ::ast|type []))
@@ -246,8 +268,6 @@
 (s/def ::fn|name symbol?)
 (s/def ::fn|dom ::ast|type)
 (s/def ::fn|rng ::ast|type)
-
-(s/def ::ast|type (s/multi-spec type-type ::type|type))
 
 (s/fdef parse-type
   :args (s/cat :s ::type|parse)
@@ -267,3 +287,10 @@
   (mapv parse-type
         (binding [s/*recursion-limit* 2]
           (gen/sample (s/gen ::type|parse) 20))))
+
+(comment
+  (s/describe ::type|parse)
+  (s/form ::exp|parse)
+  s/exercise
+
+  )
